@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Calculator,
+  Eye,
   LayoutGrid,
   type LucideIcon,
   Settings,
@@ -73,10 +74,37 @@ function NavList({ compact }: { compact: boolean }) {
 export function AppShell() {
   const theme = useSettings((state) => state.theme)
   const toggleTheme = useSettings((state) => state.toggleTheme)
+  const wakeLock = useSettings((state) => state.wakeLock)
+  const setWakeLock = useSettings((state) => state.setWakeLock)
+  const wakeSupported = typeof navigator !== 'undefined' && 'wakeLock' in navigator
 
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
+
+  useEffect(() => {
+    if (!wakeLock || !('wakeLock' in navigator)) return
+    let released = false
+    let sentinel: WakeLockSentinel | null = null
+    async function acquire() {
+      if (released) return
+      try {
+        sentinel = await navigator.wakeLock.request('screen')
+      } catch {
+        /* el sistema puede negar el bloqueo */
+      }
+    }
+    void acquire()
+    function onVisible() {
+      if (document.visibilityState === 'visible') void acquire()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      released = true
+      document.removeEventListener('visibilitychange', onVisible)
+      void sentinel?.release()
+    }
+  }, [wakeLock])
 
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -92,6 +120,19 @@ export function AppShell() {
           <span className="block truncate text-xs text-copper">{APP_TAGLINE}</span>
         </Link>
         <div className="flex items-center gap-1">
+          {wakeSupported ? (
+            <button
+              type="button"
+              className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl"
+              aria-pressed={wakeLock}
+              aria-label={
+                wakeLock ? 'Permitir que la pantalla se apague' : 'Mantener la pantalla encendida'
+              }
+              onClick={() => setWakeLock(!wakeLock)}
+            >
+              <Eye aria-hidden="true" className="size-5" />
+            </button>
+          ) : null}
           <button
             type="button"
             className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl"

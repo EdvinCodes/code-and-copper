@@ -1,13 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import { HomePage } from '../features/home/HomePage.tsx'
 import { SettingsPage } from '../features/settings/SettingsPage.tsx'
-import {
-  ArsenalSoon,
-  CheatsSoon,
-  DiagnosticSoon,
-  MissingSoon,
-  PanelSoon,
-} from '../features/shared/SoonPage.tsx'
+import { MissingSoon } from '../features/shared/SoonPage.tsx'
 import { AppShell } from './AppShell.tsx'
 import { RootErrorBoundary } from './RootErrorBoundary.tsx'
 
@@ -42,11 +36,41 @@ export const router = createBrowserRouter(
               Component: module.ClimaPage,
             })),
         },
-        { path: 'chuletas', Component: CheatsSoon },
-        { path: 'cuadro', Component: PanelSoon },
-        { path: 'diagnostico', Component: DiagnosticSoon },
-        { path: 'diagnostico/:caso', Component: DiagnosticSoon },
-        { path: 'arsenal', Component: ArsenalSoon },
+        {
+          path: 'chuletas',
+          lazy: () =>
+            import('../features/cheatsheets/CheatsPage.tsx').then((module) => ({
+              Component: module.CheatsPage,
+            })),
+        },
+        {
+          path: 'cuadro',
+          lazy: () =>
+            import('../features/panel/PanelPage.tsx').then((module) => ({
+              Component: module.PanelPage,
+            })),
+        },
+        {
+          path: 'diagnostico',
+          lazy: () =>
+            import('../features/diagnostics/DiagnosticPage.tsx').then((module) => ({
+              Component: module.DiagnosticPage,
+            })),
+        },
+        {
+          path: 'diagnostico/:caso',
+          lazy: () =>
+            import('../features/diagnostics/DiagnosticPage.tsx').then((module) => ({
+              Component: module.DiagnosticPage,
+            })),
+        },
+        {
+          path: 'arsenal',
+          lazy: () =>
+            import('../features/arsenal/ArsenalPage.tsx').then((module) => ({
+              Component: module.ArsenalPage,
+            })),
+        },
         { path: 'ajustes', Component: SettingsPage },
         { path: '*', Component: MissingSoon },
       ],

@@ -3,6 +3,7 @@ import { ExplainAsDev } from '../../../components/ExplainAsDev.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
 import { Segmented } from '../../../components/Segmented.tsx'
+import { ShareButton } from '../../../components/ShareButton.tsx'
 import { type Status, StatusBadge } from '../../../components/StatusBadge.tsx'
 import { Tabs } from '../../../components/Tabs.tsx'
 import { type GasId, REFRIGERANTS } from '../../../data/refrigerants.ts'
@@ -33,6 +34,9 @@ export function ClimaPage() {
         <p className="mt-2 text-muted">
           Estimaciones de campo. La carga no sustituye un cálculo de cargas del RITE.
         </p>
+        <div className="mt-3">
+          <ShareButton title="Clima · Code & Copper" />
+        </div>
       </header>
       <Tabs
         value={tab}

@@ -5,6 +5,7 @@ import { Formula } from '../../../components/Formula.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
 import { Segmented } from '../../../components/Segmented.tsx'
+import { ShareButton } from '../../../components/ShareButton.tsx'
 import { type OhmField, solveOhm } from '../../../engine/ohm.ts'
 import { powerTriangle } from '../../../engine/power.ts'
 import { formatNumber, parseDecimal } from '../../../engine/units.ts'
@@ -95,6 +96,9 @@ export function OhmPage() {
         <p className="mt-2 text-muted">
           Mandan los dos últimos campos que edites. Los otros dos se calculan.
         </p>
+        <div className="mt-3">
+          <ShareButton title="Ley de Ohm · Code & Copper" />
+        </div>
       </header>
       <div className="grid gap-3 sm:grid-cols-2">
         {fields.map((field) => (

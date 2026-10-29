@@ -5,6 +5,7 @@ import { Formula } from '../../../components/Formula.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
 import { Segmented } from '../../../components/Segmented.tsx'
+import { ShareButton } from '../../../components/ShareButton.tsx'
 import { StatusBadge } from '../../../components/StatusBadge.tsx'
 import { GROUPING, METHODS } from '../../../data/ampacity.ts'
 import { VOLTAGE, VOLTAGE_DROP_LIMITS } from '../../../data/constants.ts'
@@ -104,6 +105,9 @@ export function CablePage() {
             {VOLTAGE.mono} V monofásica y {VOLTAGE.tri} V trifásica. Conductividad a la temperatura
             máxima del aislamiento, no a 20 °C.
           </p>
+          <div className="mt-3">
+            <ShareButton title="Sección de cable · Code & Copper" />
+          </div>
         </header>
         <Segmented
           label="Modo"
