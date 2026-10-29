@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { ExplainAsDev } from '../../../components/ExplainAsDev.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
@@ -6,27 +7,91 @@ import { Segmented } from '../../../components/Segmented.tsx'
 import { ShareButton } from '../../../components/ShareButton.tsx'
 import { type Status, StatusBadge } from '../../../components/StatusBadge.tsx'
 import { Tabs } from '../../../components/Tabs.tsx'
-import { type GasId, REFRIGERANTS } from '../../../data/refrigerants.ts'
+import { REFRIGERANTS } from '../../../data/refrigerants.ts'
 import { airDelta, waterDelta } from '../../../engine/deltaT.ts'
 import { flowFromPower, instantCop, powerFromFlow } from '../../../engine/hydronic.ts'
 import { bandOf, chargeDiagnosis, subcooling, superheat } from '../../../engine/refrigerant.ts'
-import {
-  type ClimateZone,
-  type InsulationLevel,
-  type Orientation,
-  thermalLoad,
-} from '../../../engine/thermalLoad.ts'
+import { thermalLoad } from '../../../engine/thermalLoad.ts'
 import { formatNumber, parseDecimal } from '../../../engine/units.ts'
+import { useHistory } from '../../../stores/history.ts'
 import { RefrigerantPanel } from '../../cheatsheets/RefrigerantPanel.tsx'
+import { type ClimaForm, formFromParams, paramsFromForm } from './climaQuery.ts'
 
-type Tab = 'carga' | 'salto' | 'ciclo' | 'caudal' | 'gases'
 const bandStatus = { ok: 'ok', warn: 'warn', danger: 'danger' } as const satisfies Record<
   string,
   Status
 >
 
+function summaryOf(form: ClimaForm): { title: string; summary: string } | null {
+  if (form.tab === 'carga') {
+    const area = parseDecimal(form.area)
+    const height = parseDecimal(form.height)
+    if (area === null || height === null) return null
+    const result = thermalLoad({
+      areaM2: area,
+      heightM: height,
+      insulation: form.insulation,
+      orientation: form.orientation,
+      underRoof: form.roof,
+      largeWindows: form.windows,
+      zone: form.zone,
+      people: parseDecimal(form.people) ?? 0,
+      equipmentW: parseDecimal(form.equipment) ?? 0,
+    })
+    return {
+      title: `Carga ${formatNumber(result.kw, 2)} kW`,
+      summary: `${formatNumber(area, 1)} m² · ${formatNumber(result.fgPerHour, 0)} fg/h`,
+    }
+  }
+  if (form.tab === 'salto') {
+    const delta = Math.abs((parseDecimal(form.inlet) ?? 0) - (parseDecimal(form.outlet) ?? 0))
+    return { title: `Salto ${formatNumber(delta, 1)} K`, summary: form.deltaMode }
+  }
+  if (form.tab === 'ciclo') {
+    const sh = superheat(
+      form.gas,
+      parseDecimal(form.suctionP) ?? Number.NaN,
+      parseDecimal(form.suctionT) ?? Number.NaN,
+    )
+    if (sh === null) return null
+    return { title: `${form.gas} · SH ${formatNumber(sh, 1)} K`, summary: 'Recalentamiento' }
+  }
+  if (form.tab === 'caudal') {
+    const flow = flowFromPower(parseDecimal(form.power) ?? 0, parseDecimal(form.waterDelta) ?? 0)
+    if (flow === null) return null
+    return {
+      title: `Agua ${formatNumber(flow, 1)} L/min`,
+      summary: `${form.power} kW · ΔT ${form.waterDelta} K`,
+    }
+  }
+  return null
+}
+
 export function ClimaPage() {
-  const [tab, setTab] = useState<Tab>('carga')
+  const [search, setSearch] = useSearchParams()
+  const [form, setForm] = useState(() => formFromParams(search))
+  const addHistory = useHistory((state) => state.add)
+  const entry = useMemo(() => summaryOf(form), [form])
+
+  useEffect(() => {
+    const next = paramsFromForm(form)
+    if (next.toString() !== search.toString()) setSearch(next, { replace: true })
+  }, [form, search, setSearch])
+
+  useEffect(() => {
+    if (!entry) return
+    const href = `/calc/clima?${paramsFromForm(form).toString()}`
+    const timer = window.setTimeout(
+      () => addHistory({ kind: 'clima', title: entry.title, summary: entry.summary, href }),
+      800,
+    )
+    return () => window.clearTimeout(timer)
+  }, [addHistory, entry, form])
+
+  function patch(partial: Partial<ClimaForm>) {
+    setForm((current) => ({ ...current, ...partial }))
+  }
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <header>
@@ -39,8 +104,8 @@ export function ClimaPage() {
         </div>
       </header>
       <Tabs
-        value={tab}
-        onChange={setTab}
+        value={form.tab}
+        onChange={(tab) => patch({ tab })}
         options={[
           { value: 'carga', label: 'Carga' },
           { value: 'salto', label: 'Salto' },
@@ -49,11 +114,11 @@ export function ClimaPage() {
           { value: 'gases', label: 'Gases' },
         ]}
       />
-      {tab === 'carga' ? <LoadTool /> : null}
-      {tab === 'salto' ? <DeltaTool /> : null}
-      {tab === 'ciclo' ? <CycleTool /> : null}
-      {tab === 'caudal' ? <WaterTool /> : null}
-      {tab === 'gases' ? <RefrigerantPanel /> : null}
+      {form.tab === 'carga' ? <LoadTool form={form} patch={patch} /> : null}
+      {form.tab === 'salto' ? <DeltaTool form={form} patch={patch} /> : null}
+      {form.tab === 'ciclo' ? <CycleTool form={form} patch={patch} /> : null}
+      {form.tab === 'caudal' ? <WaterTool form={form} patch={patch} /> : null}
+      {form.tab === 'gases' ? <RefrigerantPanel /> : null}
       <ExplainAsDev>
         El salto térmico es la diferencia entre la entrada y la salida de un intercambiador: si el
         caudal baja, la diferencia sube, igual que una cola que se vacía más despacio de lo que
@@ -65,41 +130,48 @@ export function ClimaPage() {
   )
 }
 
-function LoadTool() {
-  const [area, setArea] = useState('20')
-  const [height, setHeight] = useState('2,6')
-  const [insulation, setInsulation] = useState<InsulationLevel>('medio')
-  const [orientation, setOrientation] = useState<Orientation>('S')
-  const [zone, setZone] = useState<ClimateZone>('suave')
-  const [people, setPeople] = useState('2')
-  const [equipment, setEquipment] = useState('0')
-  const [roof, setRoof] = useState(false)
-  const [windows, setWindows] = useState(false)
-  const result = useMemo(() => {
-    const areaM2 = parseDecimal(area)
-    const heightM = parseDecimal(height)
-    if (areaM2 === null || heightM === null) return null
-    return thermalLoad({
-      areaM2,
-      heightM,
-      insulation,
-      orientation,
-      underRoof: roof,
-      largeWindows: windows,
-      zone,
-      people: parseDecimal(people) ?? 0,
-      equipmentW: parseDecimal(equipment) ?? 0,
-    })
-  }, [area, equipment, height, insulation, orientation, people, roof, windows, zone])
+function LoadTool({
+  form,
+  patch,
+}: {
+  form: ClimaForm
+  patch: (partial: Partial<ClimaForm>) => void
+}) {
+  const area = parseDecimal(form.area)
+  const height = parseDecimal(form.height)
+  const result =
+    area === null || height === null
+      ? null
+      : thermalLoad({
+          areaM2: area,
+          heightM: height,
+          insulation: form.insulation,
+          orientation: form.orientation,
+          underRoof: form.roof,
+          largeWindows: form.windows,
+          zone: form.zone,
+          people: parseDecimal(form.people) ?? 0,
+          equipmentW: parseDecimal(form.equipment) ?? 0,
+        })
 
   return (
     <div className="flex flex-col gap-3">
-      <NumberField label="Superficie" value={area} unit="m²" onChange={setArea} />
-      <NumberField label="Altura" value={height} unit="m" onChange={setHeight} />
+      <NumberField
+        label="Superficie"
+        value={form.area}
+        unit="m²"
+        onChange={(area) => patch({ area })}
+      />
+      <NumberField
+        label="Altura"
+        value={form.height}
+        unit="m"
+        onChange={(height) => patch({ height })}
+      />
       <Segmented
         label="Aislamiento"
-        value={insulation}
-        onChange={setInsulation}
+        value={form.insulation}
+        onChange={(insulation) => patch({ insulation })}
         options={[
           { value: 'bueno', label: 'Bueno, 30 W/m³' },
           { value: 'medio', label: 'Medio, 40' },
@@ -108,29 +180,31 @@ function LoadTool() {
       />
       <Segmented
         label="Orientación de la fachada principal"
-        value={orientation}
-        onChange={setOrientation}
-        options={['N', 'E', 'S', 'O'].map((value) => ({
-          value: value as Orientation,
-          label: value,
-        }))}
+        value={form.orientation}
+        onChange={(orientation) => patch({ orientation })}
+        options={(['N', 'E', 'S', 'O'] as const).map((value) => ({ value, label: value }))}
       />
       <Segmented
         label="Zona"
-        value={zone}
-        onChange={setZone}
+        value={form.zone}
+        onChange={(zone) => patch({ zone })}
         options={[
           { value: 'suave', label: 'Suave o costa' },
           { value: 'calurosa', label: 'Calurosa ×1,15' },
         ]}
       />
-      <NumberField label="Personas" value={people} onChange={setPeople} />
-      <NumberField label="Equipos internos" value={equipment} unit="W" onChange={setEquipment} />
-      <Toggle on={roof} label="Bajo cubierta" onClick={() => setRoof((value) => !value)} />
+      <NumberField label="Personas" value={form.people} onChange={(people) => patch({ people })} />
+      <NumberField
+        label="Equipos internos"
+        value={form.equipment}
+        unit="W"
+        onChange={(equipment) => patch({ equipment })}
+      />
+      <Toggle on={form.roof} label="Bajo cubierta" onClick={() => patch({ roof: !form.roof })} />
       <Toggle
-        on={windows}
+        on={form.windows}
         label="Grandes ventanales"
-        onClick={() => setWindows((value) => !value)}
+        onClick={() => patch({ windows: !form.windows })}
       />
       {result ? (
         <article className="rounded-2xl border border-line bg-surface p-4 sun:border-2">
@@ -149,24 +223,26 @@ function LoadTool() {
   )
 }
 
-function DeltaTool() {
-  const [mode, setMode] = useState<'split-frio' | 'split-calor' | 'aerotermia'>('split-frio')
-  const [inlet, setInlet] = useState('24')
-  const [outlet, setOutlet] = useState('14')
-  const [design, setDesign] = useState('5')
-  const delta = (parseDecimal(inlet) ?? 0) - (parseDecimal(outlet) ?? 0)
+function DeltaTool({
+  form,
+  patch,
+}: {
+  form: ClimaForm
+  patch: (partial: Partial<ClimaForm>) => void
+}) {
+  const delta = (parseDecimal(form.inlet) ?? 0) - (parseDecimal(form.outlet) ?? 0)
   const absolute = Math.abs(delta)
   const verdict =
-    mode === 'aerotermia'
-      ? waterDelta(absolute, parseDecimal(design) ?? 5)
-      : airDelta(mode, absolute)
+    form.deltaMode === 'aerotermia'
+      ? waterDelta(absolute, parseDecimal(form.design) ?? 5)
+      : airDelta(form.deltaMode, absolute)
 
   return (
     <div className="flex flex-col gap-3">
       <Segmented
         label="Equipo"
-        value={mode}
-        onChange={setMode}
+        value={form.deltaMode}
+        onChange={(deltaMode) => patch({ deltaMode })}
         options={[
           { value: 'split-frio', label: 'Split frío' },
           { value: 'split-calor', label: 'Split calor' },
@@ -174,19 +250,24 @@ function DeltaTool() {
         ]}
       />
       <NumberField
-        label={mode === 'split-frio' ? 'Retorno' : 'Entrada o impulsión mayor'}
-        value={inlet}
+        label={form.deltaMode === 'split-frio' ? 'Retorno' : 'Entrada o impulsión mayor'}
+        value={form.inlet}
         unit="°C"
-        onChange={setInlet}
+        onChange={(inlet) => patch({ inlet })}
       />
       <NumberField
-        label={mode === 'split-frio' ? 'Impulsión' : 'Salida'}
-        value={outlet}
+        label={form.deltaMode === 'split-frio' ? 'Impulsión' : 'Salida'}
+        value={form.outlet}
         unit="°C"
-        onChange={setOutlet}
+        onChange={(outlet) => patch({ outlet })}
       />
-      {mode === 'aerotermia' ? (
-        <NumberField label="ΔT de diseño" value={design} unit="K" onChange={setDesign} />
+      {form.deltaMode === 'aerotermia' ? (
+        <NumberField
+          label="ΔT de diseño"
+          value={form.design}
+          unit="K"
+          onChange={(design) => patch({ design })}
+        />
       ) : null}
       <article className="rounded-2xl border border-line bg-surface p-4 sun:border-2">
         <StatusBadge status={bandStatus[verdict.band]}>{formatNumber(absolute, 1)} K</StatusBadge>
@@ -196,40 +277,59 @@ function DeltaTool() {
   )
 }
 
-function CycleTool() {
-  const [gas, setGas] = useState<GasId>('R32')
-  const [suctionP, setSuctionP] = useState('8,5')
-  const [suctionT, setSuctionT] = useState('12')
-  const [liquidP, setLiquidP] = useState('26,32')
-  const [liquidT, setLiquidT] = useState('40')
+function CycleTool({
+  form,
+  patch,
+}: {
+  form: ClimaForm
+  patch: (partial: Partial<ClimaForm>) => void
+}) {
   const sh = superheat(
-    gas,
-    parseDecimal(suctionP) ?? Number.NaN,
-    parseDecimal(suctionT) ?? Number.NaN,
+    form.gas,
+    parseDecimal(form.suctionP) ?? Number.NaN,
+    parseDecimal(form.suctionT) ?? Number.NaN,
   )
   const sc = subcooling(
-    gas,
-    parseDecimal(liquidP) ?? Number.NaN,
-    parseDecimal(liquidT) ?? Number.NaN,
+    form.gas,
+    parseDecimal(form.liquidP) ?? Number.NaN,
+    parseDecimal(form.liquidT) ?? Number.NaN,
   )
 
   return (
     <div className="flex flex-col gap-3">
       <Segmented
         label="Gas"
-        value={gas}
-        onChange={setGas}
-        options={(Object.keys(REFRIGERANTS) as GasId[]).map((value) => ({ value, label: value }))}
+        value={form.gas}
+        onChange={(gas) => patch({ gas })}
+        options={(Object.keys(REFRIGERANTS) as ClimaForm['gas'][]).map((value) => ({
+          value,
+          label: value,
+        }))}
       />
-      <NumberField label="Baja, manómetro" value={suctionP} unit="bar" onChange={setSuctionP} />
+      <NumberField
+        label="Baja, manómetro"
+        value={form.suctionP}
+        unit="bar"
+        onChange={(suctionP) => patch({ suctionP })}
+      />
       <NumberField
         label="Temperatura de aspiración"
-        value={suctionT}
+        value={form.suctionT}
         unit="°C"
-        onChange={setSuctionT}
+        onChange={(suctionT) => patch({ suctionT })}
       />
-      <NumberField label="Alta o líquido" value={liquidP} unit="bar" onChange={setLiquidP} />
-      <NumberField label="Temperatura de líquido" value={liquidT} unit="°C" onChange={setLiquidT} />
+      <NumberField
+        label="Alta o líquido"
+        value={form.liquidP}
+        unit="bar"
+        onChange={(liquidP) => patch({ liquidP })}
+      />
+      <NumberField
+        label="Temperatura de líquido"
+        value={form.liquidT}
+        unit="°C"
+        onChange={(liquidT) => patch({ liquidT })}
+      />
       <article className="rounded-2xl border border-line bg-surface p-4 text-sm sun:border-2">
         {sh === null || sc === null ? (
           <p>Presión fuera de la tabla (−30 a 60 °C).</p>
@@ -255,30 +355,47 @@ function CycleTool() {
   )
 }
 
-function WaterTool() {
-  const [power, setPower] = useState('8')
-  const [delta, setDelta] = useState('5')
-  const [flow, setFlow] = useState('20')
-  const [electric, setElectric] = useState('2')
-  const deltaN = parseDecimal(delta) ?? 0
-  const flowOut = flowFromPower(parseDecimal(power) ?? 0, deltaN)
-  const powerOut = powerFromFlow(parseDecimal(flow) ?? 0, deltaN)
-  const cop = instantCop(powerOut, parseDecimal(electric) ?? 0)
+function WaterTool({
+  form,
+  patch,
+}: {
+  form: ClimaForm
+  patch: (partial: Partial<ClimaForm>) => void
+}) {
+  const deltaN = parseDecimal(form.waterDelta) ?? 0
+  const flowOut = flowFromPower(parseDecimal(form.power) ?? 0, deltaN)
+  const powerOut = powerFromFlow(parseDecimal(form.flow) ?? 0, deltaN)
+  const cop = instantCop(powerOut, parseDecimal(form.electric) ?? 0)
 
   return (
     <div className="flex flex-col gap-3">
-      <NumberField label="Potencia térmica" value={power} unit="kW" onChange={setPower} />
-      <NumberField label="Salto de agua" value={delta} unit="K" onChange={setDelta} />
+      <NumberField
+        label="Potencia térmica"
+        value={form.power}
+        unit="kW"
+        onChange={(power) => patch({ power })}
+      />
+      <NumberField
+        label="Salto de agua"
+        value={form.waterDelta}
+        unit="K"
+        onChange={(waterDelta) => patch({ waterDelta })}
+      />
       <p className="rounded-xl bg-surface p-3">
         Caudal: {flowOut === null ? '—' : `${formatNumber(flowOut, 1)} L/min`}
       </p>
-      <NumberField label="Caudal medido" value={flow} unit="L/min" onChange={setFlow} />
+      <NumberField
+        label="Caudal medido"
+        value={form.flow}
+        unit="L/min"
+        onChange={(flow) => patch({ flow })}
+      />
       <p className="rounded-xl bg-surface p-3">Potencia: {formatNumber(powerOut, 2)} kW</p>
       <NumberField
         label="Potencia eléctrica medida"
-        value={electric}
+        value={form.electric}
         unit="kW"
-        onChange={setElectric}
+        onChange={(electric) => patch({ electric })}
       />
       <p className="rounded-xl bg-surface p-3">
         COP instantáneo: {cop === null ? '—' : formatNumber(cop, 2)}
