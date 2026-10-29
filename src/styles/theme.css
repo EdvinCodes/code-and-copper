@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@custom-variant sun (&:where([data-theme="sun"], [data-theme="sun"] *));
+
+:root {
+  color-scheme: dark;
+  --bg: #020617;
+  --surface: #18181b;
+  --surface-2: #09090b;
+  --text: #fafafa;
+  --muted: #d4d4d8;
+  --line: #52525b;
+  --copper: #e8a15a;
+  --copper-deep: #b87333;
+  --shadow: 0 16px 40px rgb(0 0 0 / 0.35);
+}
+
+[data-theme="sun"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f4f4f5;
+  --surface-2: #ffffff;
+  --text: #09090b;
+  --muted: #3f3f46;
+  --line: #18181b;
+  --copper: #9a5416;
+  --copper-deep: #7c3f0d;
+  --shadow: 0 10px 24px rgb(0 0 0 / 0.08);
+}
+
+@theme inline {
+  --font-sans: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-copper: var(--copper);
+  --color-copper-deep: var(--copper-deep);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--copper);
+  outline-offset: 2px;
+}
+
+dialog.sheet {
+  width: min(40rem, 100%);
+  max-height: min(85dvh, 48rem);
+  margin: auto auto 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+dialog.sheet::backdrop {
+  background: rgb(0 0 0 / 0.62);
+}
+
+@media (min-width: 768px) {
+  dialog.sheet {
+    margin: auto;
+    border-radius: 1.25rem;
+  }
+}
+
+[data-theme="sun"] dialog.sheet {
+  border-width: 2px;
+}
