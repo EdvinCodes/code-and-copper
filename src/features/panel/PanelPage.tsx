@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PageIntro } from '../../components/Guide.tsx'
 import { Sheet } from '../../components/Sheet.tsx'
 import { PANEL_MODULES, type PanelModule, SCHEMATICS } from '../../data/panel.ts'
 
@@ -6,13 +7,12 @@ export function PanelPage() {
   const [open, setOpen] = useState<PanelModule | null>(null)
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Cuadro</h1>
-        <p className="mt-2 text-muted">
-          Pulsa un aparato del carril. La ficha dice qué es, cómo se cablea y a qué se parece en
-          software.
+      <PageIntro kicker="La caja de la entrada" title="Qué hay en el cuadro y para qué">
+        <p>
+          El cuadro corta, protege y reparte. Pulsa cada aparato. La ficha dice qué hace, cómo se
+          cablea y en qué se parece a una pieza de un programa, por si vienes de ahí.
         </p>
-      </header>
+      </PageIntro>
       <div className="overflow-x-auto rounded-2xl border border-line bg-zinc-900 p-4 sun:border-2 sun:bg-zinc-100">
         <div className="flex h-44 min-w-max items-end gap-1 border-b-8 border-zinc-500 px-2">
           {PANEL_MODULES.map((module) => (
@@ -28,9 +28,23 @@ export function PanelPage() {
           ))}
         </div>
         <p className="mt-2 text-xs text-zinc-400">
-          Carril DIN. El ancho es orientativo, a razón de 18 mm por módulo.
+          El dibujo es el carril. Si no reconoces la sigla, usa la lista de debajo.
         </p>
       </div>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {PANEL_MODULES.map((module) => (
+          <li key={module.id}>
+            <button
+              type="button"
+              className="panel min-h-12 w-full px-4 py-3 text-left"
+              onClick={() => setOpen(module)}
+            >
+              <span className="font-semibold text-copper">{module.short}</span>
+              <span className="mt-1 block text-sm">{module.name}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
       <div className="grid gap-4 lg:grid-cols-2">
         {SCHEMATICS.map((scheme) => (
           <article

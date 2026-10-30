@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { PageIntro } from '../../components/Guide.tsx'
 import { CABLE_TYPES, PE_RULES } from '../../data/cables.ts'
 import { CONDUCTOR_COLORS, KNX_COLORS } from '../../data/colors.ts'
 import { ELECTRIFICATION, EV_STEPS, HOUSING_CIRCUITS } from '../../data/itcBt25.ts'
@@ -31,12 +32,12 @@ export function CheatsPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Chuletas</h1>
-        <p className="mt-2 text-muted">
-          Consulta rápida. Los números salen del texto vigente, no de un resumen de memoria.
+      <PageIntro kicker="Para mirar, no para calcular" title="Tablas que se consultan en la obra">
+        <p>
+          Colores de cada cable, qué circuito es el de la cocina, qué gas lleva un split y qué
+          trámite pide Canarias. Busca por una palabra normal: luces, tierra, coche, boletín.
         </p>
-      </header>
+      </PageIntro>
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}

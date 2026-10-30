@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { ExplainAsDev } from '../../../components/ExplainAsDev.tsx'
 import { Formula } from '../../../components/Formula.tsx'
+import { PageIntro, UnitCards } from '../../../components/Guide.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
 import { Segmented } from '../../../components/Segmented.tsx'
@@ -12,10 +13,10 @@ import { formatNumber, parseDecimal } from '../../../engine/units.ts'
 import { useHistory } from '../../../stores/history.ts'
 
 const fields: { key: OhmField; label: string; unit: string }[] = [
-  { key: 'V', label: 'Tensión', unit: 'V' },
-  { key: 'I', label: 'Intensidad', unit: 'A' },
-  { key: 'R', label: 'Resistencia', unit: 'Ω' },
-  { key: 'P', label: 'Potencia', unit: 'W' },
+  { key: 'V', label: 'Tensión, la presión', unit: 'V' },
+  { key: 'I', label: 'Corriente, lo que circula', unit: 'A' },
+  { key: 'R', label: 'Resistencia, el freno', unit: 'Ω' },
+  { key: 'P', label: 'Potencia, el trabajo', unit: 'W' },
 ]
 
 type Texts = Record<OhmField, string>
@@ -91,15 +92,15 @@ export function OhmPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Ley de Ohm y potencia</h1>
-        <p className="mt-2 text-muted">
-          Mandan los dos últimos campos que edites. Los otros dos se calculan.
+      <PageIntro kicker="La base" title="Voltio, amperio, ohmio y vatio">
+        <p>
+          Son cuatro números de la misma cosa. Escribes dos y salen los otros dos. Los dos últimos
+          que toques mandan; los otros se recalculan.
         </p>
-        <div className="mt-3">
-          <ShareButton title="Ley de Ohm · Code & Copper" />
-        </div>
-      </header>
+        <UnitCards />
+        <p>El ohmio (Ω) es lo que frena el paso. Más ohmios, menos corriente a la misma tensión.</p>
+      </PageIntro>
+      <ShareButton title="Ley de Ohm · Code & Copper" />
       <div className="grid gap-3 sm:grid-cols-2">
         {fields.map((field) => (
           <div key={field.key} className={drivers.includes(field.key) ? '' : 'opacity-80'}>
@@ -115,10 +116,22 @@ export function OhmPage() {
       {'error' in solved ? (
         <p className="text-sm text-red-300 sun:text-red-800">{solved.error}</p>
       ) : (
-        <Formula>{solved.formula}</Formula>
+        <>
+          <p className="panel p-4 leading-relaxed">
+            Con {formatNumber(solved.values.V, 2)} V de presión pasan{' '}
+            {formatNumber(solved.values.I, 2)} A. El aparato hace {formatNumber(solved.values.P, 0)}{' '}
+            W y equivale a una resistencia de {formatNumber(solved.values.R, 2)} Ω.
+          </p>
+          <Formula>{solved.formula}</Formula>
+        </>
       )}
-      <section className="rounded-2xl border border-line bg-surface p-4 sun:border-2">
-        <h2 className="text-lg font-semibold">Triángulo de potencias</h2>
+      <section className="panel p-4">
+        <h2 className="text-lg font-semibold">No toda la potencia hace trabajo</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Un piso es monofásico: una fase y el neutro. Un taller puede ser trifásico: tres fases.
+          Parte de lo que llega se convierte en calor o movimiento (vatios). Otra parte vuelve a la
+          red cada ciclo (los var). El total es la potencia aparente, en VA.
+        </p>
         <div className="mt-3 flex flex-col gap-3">
           <Segmented
             label="Sistema"
@@ -129,7 +142,12 @@ export function OhmPage() {
               { value: 'tri', label: 'Trifásica' },
             ]}
           />
-          <NumberField label="cos φ" value={cosPhi} onChange={setCosPhi} />
+          <NumberField
+            label="Cuánto de esa potencia es útil"
+            value={cosPhi}
+            hint="1 es una resistencia pura. 0,9 es un valor habitual si hay motores. Se llama factor de potencia."
+            onChange={setCosPhi}
+          />
           {triangle ? (
             <dl className="grid grid-cols-3 gap-2 text-sm">
               <div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { ExplainAsDev } from '../../../components/ExplainAsDev.tsx'
 import { Formula } from '../../../components/Formula.tsx'
+import { Note, PageIntro, Step, UnitCards } from '../../../components/Guide.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
 import { Segmented } from '../../../components/Segmented.tsx'
@@ -15,7 +16,11 @@ import { formatNumber, parseDecimal } from '../../../engine/units.ts'
 import { useHistory } from '../../../stores/history.ts'
 import { type CableForm, formFromParams, paramsFromForm } from './cableQuery.ts'
 
-const statusText = { ok: 'Dentro de norma', warn: 'Al límite', danger: 'Fuera de norma' } as const
+const statusText = {
+  ok: 'Se puede hacer así',
+  warn: 'Vas justo',
+  danger: 'No lo dejes así',
+} as const
 
 function powerWatts(form: CableForm): number | null {
   const value = parseDecimal(form.power)
@@ -98,216 +103,249 @@ export function CablePage() {
 
   return (
     <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
-      <div className="flex flex-col gap-4">
-        <header>
-          <h1 className="text-3xl font-semibold tracking-tight">Sección, caída y PIA</h1>
-          <p className="mt-2 text-sm text-muted">
-            {VOLTAGE.mono} V monofásica y {VOLTAGE.tri} V trifásica. Conductividad a la temperatura
-            máxima del aislamiento, no a 20 °C.
+      <div className="flex min-w-0 flex-col gap-4">
+        <PageIntro kicker="Qué cable poner" title="Sección, caída y automático">
+          <p>
+            Sirve para saber el grosor del cable y el automático que lo protege. Un cable fino en
+            una línea larga se calienta y, además, al final llega menos tensión de la que salió del
+            cuadro.
           </p>
-          <div className="mt-3">
-            <ShareButton title="Sección de cable · Code & Copper" />
-          </div>
-        </header>
-        <Segmented
-          label="Modo"
-          value={form.mode}
-          onChange={(mode) => patch({ mode })}
-          options={[
-            { value: 'design', label: 'Dimensionar' },
-            { value: 'verify', label: 'Verificar' },
-          ]}
-        />
-        <fieldset>
-          <legend className="mb-2 text-sm font-medium">Preset</legend>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <UnitCards />
+        </PageIntro>
+        <ShareButton title="Sección de cable · Code & Copper" />
+        <Step n={1} title="Qué vas a alimentar">
+          <Note>
+            En una vivienda los circuitos ya tienen nombre: C1 son las luces, C2 los enchufes
+            normales, C3 la cocina. Elige uno y la calculadora rellena lo que pide la norma. «Libre»
+            es cuando no es un circuito de casa.
+          </Note>
+          <div className="grid min-w-0 grid-cols-2 gap-2">
             <button
               type="button"
               aria-pressed={form.preset === 'libre'}
-              className={`min-h-12 shrink-0 rounded-xl border px-3 ${form.preset === 'libre' ? 'bg-copper-deep text-white' : 'border-line bg-surface'}`}
+              className={`min-h-16 rounded-xl border px-3 text-left ${form.preset === 'libre' ? 'border-copper bg-copper-deep text-white' : 'border-line bg-surface'}`}
               onClick={() => patch({ preset: 'libre' })}
             >
-              Libre
+              <span className="block font-semibold">Libre</span>
+              <span className="block text-sm opacity-80">Yo pongo los datos</span>
             </button>
             {HOUSING_CIRCUITS.map((circuit) => (
               <button
                 key={circuit.id}
                 type="button"
                 aria-pressed={form.preset === circuit.id}
-                className={`min-h-12 shrink-0 rounded-xl border px-3 ${form.preset === circuit.id ? 'bg-copper-deep text-white' : 'border-line bg-surface'}`}
+                className={`min-h-16 rounded-xl border px-3 text-left ${form.preset === circuit.id ? 'border-copper bg-copper-deep text-white' : 'border-line bg-surface'}`}
                 onClick={() => patch({ preset: circuit.id })}
               >
-                {circuit.id}
+                <span className="block font-semibold">{circuit.id}</span>
+                <span className="block text-sm opacity-80">{circuit.name}</span>
               </button>
             ))}
           </div>
-          {preset ? (
-            <p className="mt-2 text-sm text-muted">
-              {preset.name}. {preset.powerNote ?? `${preset.powerW} W por toma`}. Mínimo de tabla{' '}
-              {preset.sectionMm2} mm².
-            </p>
+          <Note>
+            {preset
+              ? `${preset.name}. ${preset.powerNote ?? `La norma cuenta ${preset.powerW} W en cada toma.`} Cable mínimo ${preset.sectionMm2} mm²${preset.breakerA ? ` y automático de ${preset.breakerA} A` : ''}.`
+              : 'Sin circuito de vivienda. Tú indicas la potencia, los metros y si es alumbrado, fuerza o el coche.'}
+          </Note>
+          <Segmented
+            label="Qué quieres saber"
+            value={form.mode}
+            onChange={(mode) => patch({ mode })}
+            options={[
+              { value: 'design', label: 'Qué comprar' },
+              { value: 'verify', label: 'Si lo instalado vale' },
+            ]}
+          />
+        </Step>
+        <Step n={2} title="Una fase o tres">
+          <Note>
+            Monofásica es lo normal de un piso: una fase y el neutro, {VOLTAGE.mono} V. Trifásica
+            son tres fases, {VOLTAGE.tri} V entre ellas. La ves en talleres, comunidades y en
+            algunos cargadores de coche o aerotermias grandes. Si dudas en una vivienda, es
+            monofásica.
+          </Note>
+          <Segmented
+            label="Tipo de suministro"
+            value={form.system}
+            onChange={(system) => patch({ system })}
+            options={[
+              { value: 'mono', label: `Piso, ${VOLTAGE.mono} V` },
+              { value: 'tri', label: `Taller, ${VOLTAGE.tri} V` },
+            ]}
+          />
+        </Step>
+        <Step n={3} title="Cuánto consume y qué lejos está">
+          <Note>
+            La potencia (W) sale de la pegatina del aparato. 1000 W son 1 kW. La intensidad (A) es
+            la corriente: si ya la tienes medida con la pinza, úsala. La longitud es solo la ida,
+            desde el cuadro hasta el aparato, en metros.
+          </Note>
+          <Segmented
+            label="Qué dato tienes"
+            value={form.entry}
+            onChange={(entry) => patch({ entry })}
+            options={[
+              { value: 'power', label: 'Potencia, W' },
+              { value: 'current', label: 'Corriente, A' },
+            ]}
+          />
+          {form.entry === 'power' ? (
+            <>
+              <Segmented
+                label="Unidad"
+                value={form.powerUnit}
+                onChange={(powerUnit) => patch({ powerUnit })}
+                options={[
+                  { value: 'W', label: 'Vatios' },
+                  { value: 'kW', label: 'Kilovatios' },
+                ]}
+              />
+              <NumberField
+                label="Potencia"
+                value={form.power}
+                unit={form.powerUnit}
+                hint="Ejemplo: un horno suele estar entre 2000 y 3500 W."
+                onChange={(power) => patch({ power })}
+              />
+            </>
+          ) : (
+            <NumberField
+              label="Corriente"
+              value={form.current}
+              unit="A"
+              hint="Es lo que marca la pinza amperimétrica con el aparato en marcha."
+              onChange={(current) => patch({ current })}
+            />
+          )}
+          <NumberField
+            label="Metros de cable, solo la ida"
+            value={form.length}
+            unit="m"
+            onChange={(length) => patch({ length })}
+          />
+          {form.mode === 'verify' ? (
+            <NumberField
+              label="Cable que ya está puesto"
+              value={form.section}
+              unit="mm²"
+              hint="El grosor escrito en la cubierta: 1,5, 2,5, 4, 6…"
+              onChange={(section) => patch({ section })}
+            />
           ) : null}
-        </fieldset>
-        <Segmented
-          label="Sistema"
-          value={form.system}
-          onChange={(system) => patch({ system })}
-          options={[
-            { value: 'mono', label: 'Monofásica 230 V' },
-            { value: 'tri', label: 'Trifásica 400 V' },
-          ]}
-        />
-        <Segmented
-          label="Dato de partida"
-          value={form.entry}
-          onChange={(entry) => patch({ entry })}
-          options={[
-            { value: 'power', label: 'Potencia' },
-            { value: 'current', label: 'Intensidad' },
-          ]}
-        />
-        {form.entry === 'power' ? (
-          <>
+        </Step>
+        <details className="panel min-w-0 p-4">
+          <summary className="min-h-12 cursor-pointer text-lg font-semibold">
+            Cómo va instalado el cable
+          </summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <Note>
+              Si no tocas esto, se calcula como un cable de cobre bajo tubo en una pared, a la
+              sombra y a 40 °C. Es el caso habitual de una vivienda.
+            </Note>
+            <NumberField
+              label="Factor de potencia"
+              value={form.cosPhi}
+              hint="Déjalo en 0,9 si no lo conoces. En un circuito de vivienda, la norma usa 1 porque es el caso en el que más tensión se pierde."
+              onChange={(cosPhi) => patch({ cosPhi })}
+            />
             <Segmented
-              label="Unidad"
-              value={form.powerUnit}
-              onChange={(powerUnit) => patch({ powerUnit })}
+              label="De qué es el cable"
+              value={form.material}
+              onChange={(material) => patch({ material })}
               options={[
-                { value: 'W', label: 'W' },
-                { value: 'kW', label: 'kW' },
+                { value: 'Cu', label: 'Cobre, lo normal' },
+                { value: 'Al', label: 'Aluminio' },
               ]}
             />
-            <NumberField
-              label="Potencia"
-              value={form.power}
-              unit={form.powerUnit}
-              onChange={(power) => patch({ power })}
+            <Segmented
+              label="Hasta qué temperatura aguanta el aislante"
+              value={form.material === 'Al' ? 'XLPE' : form.insulation}
+              onChange={(insulation) => patch({ insulation })}
+              options={[
+                { value: 'PVC', label: 'PVC o Z1, 70 °C' },
+                { value: 'XLPE', label: 'XLPE, 90 °C' },
+              ]}
             />
-          </>
-        ) : (
-          <NumberField
-            label="Intensidad"
-            value={form.current}
-            unit="A"
-            onChange={(current) => patch({ current })}
-          />
-        )}
-        <NumberField
-          label="Longitud de la línea"
-          value={form.length}
-          unit="m"
-          hint="Solo la ida, no ida y vuelta."
-          onChange={(length) => patch({ length })}
-        />
-        <NumberField
-          label="Factor de potencia"
-          value={form.cosPhi}
-          hint="En vivienda, con el calibre del PIA, el caso peor es 1."
-          onChange={(cosPhi) => patch({ cosPhi })}
-        />
-        <Segmented
-          label="Material"
-          value={form.material}
-          onChange={(material) => patch({ material })}
-          options={[
-            { value: 'Cu', label: 'Cobre' },
-            { value: 'Al', label: 'Aluminio' },
-          ]}
-        />
-        <Segmented
-          label="Aislamiento"
-          value={form.material === 'Al' ? 'XLPE' : form.insulation}
-          onChange={(insulation) => patch({ insulation })}
-          options={[
-            { value: 'PVC', label: 'PVC / Z1, 70 °C' },
-            { value: 'XLPE', label: 'XLPE, 90 °C' },
-          ]}
-        />
-        <Segmented
-          label="Método de instalación"
-          value={form.method}
-          onChange={(method) => patch({ method })}
-          options={Object.entries(METHODS).map(([value, label]) => ({
-            value: value as CableForm['method'],
-            label: `${value}. ${label}`,
-          }))}
-        />
-        <NumberField
-          label="Temperatura ambiente"
-          value={form.ambient}
-          unit="°C"
-          hint="Referencia: 40 °C al aire y 25 °C en terreno."
-          onChange={(ambient) => patch({ ambient })}
-        />
-        <Segmented
-          label="Agrupamiento"
-          value={form.grouping}
-          onChange={(grouping) => patch({ grouping })}
-          options={(Object.keys(GROUPING) as CableForm['grouping'][]).map((value) => ({
-            value,
-            label:
-              value === 'bundled'
-                ? 'Agrupados'
-                : value === 'wallLayer'
-                  ? 'Capa en pared'
-                  : value === 'ceilingLayer'
-                    ? 'Bajo techo'
-                    : value === 'perforatedTray'
-                      ? 'Bandeja perforada'
-                      : 'Bandeja de escalera',
-          }))}
-        />
-        <NumberField
-          label="Circuitos agrupados"
-          value={form.circuits}
-          onChange={(circuits) => patch({ circuits })}
-        />
-        <button
-          type="button"
-          aria-pressed={form.solar}
-          className={`min-h-12 rounded-xl border px-3 text-left ${form.solar ? 'bg-copper-deep text-white' : 'border-line bg-surface sun:border-2'}`}
-          onClick={() => patch({ solar: !form.solar })}
-        >
-          {form.solar ? 'Al sol: se aplica 0,85' : 'A la sombra'}
-        </button>
-        <Segmented
-          label="Protección"
-          value={form.protection}
-          onChange={(protection) => patch({ protection })}
-          options={[
-            { value: 'pia', label: 'PIA' },
-            { value: 'gg', label: 'Fusible gG' },
-          ]}
-        />
-        <Segmented
-          label="Tipo de línea"
-          value={form.lineId}
-          onChange={(lineId) => patch({ lineId, preset: 'libre' })}
-          options={VOLTAGE_DROP_LIMITS.map((item) => ({
-            value: item.id,
-            label: `${item.pct} %. ${item.label}`,
-          }))}
-        />
-        <Segmented
-          label="Tipo de carga"
-          value={form.load}
-          onChange={(load) => patch({ load })}
-          options={[
-            { value: 'resistiva', label: 'Resistiva, curva B' },
-            { value: 'general', label: 'General, curva C' },
-            { value: 'motor', label: 'Motor ×1,25, curva D' },
-            { value: 'descarga', label: 'Descarga ×1,8' },
-            { value: 've', label: 'Recarga VE' },
-          ]}
-        />
-        {form.mode === 'verify' ? (
-          <NumberField
-            label="Sección instalada"
-            value={form.section}
-            unit="mm²"
-            onChange={(section) => patch({ section })}
-          />
-        ) : null}
+            <Segmented
+              label="Por dónde pasa"
+              value={form.method}
+              onChange={(method) => patch({ method })}
+              options={Object.entries(METHODS).map(([value, label]) => ({
+                value: value as CableForm['method'],
+                label: `${value}. ${label}`,
+              }))}
+            />
+            <NumberField
+              label="Temperatura del sitio"
+              value={form.ambient}
+              unit="°C"
+              hint="40 °C si va por dentro. 25 °C si el tubo va enterrado."
+              onChange={(ambient) => patch({ ambient })}
+            />
+            <Segmented
+              label="Va solo o junto a otros cables"
+              value={form.grouping}
+              onChange={(grouping) => patch({ grouping })}
+              options={(Object.keys(GROUPING) as CableForm['grouping'][]).map((value) => ({
+                value,
+                label:
+                  value === 'bundled'
+                    ? 'Juntos en el mismo tubo'
+                    : value === 'wallLayer'
+                      ? 'En fila sobre la pared'
+                      : value === 'ceilingLayer'
+                        ? 'Bajo el techo'
+                        : value === 'perforatedTray'
+                          ? 'Bandeja perforada'
+                          : 'Bandeja de escalera',
+              }))}
+            />
+            <NumberField
+              label="Cuántos circuitos van juntos"
+              value={form.circuits}
+              hint="Si van varios cables cargados en el mismo tubo, cada uno aguanta menos."
+              onChange={(circuits) => patch({ circuits })}
+            />
+            <button
+              type="button"
+              aria-pressed={form.solar}
+              className={`min-h-12 rounded-xl border px-3 text-left ${form.solar ? 'bg-copper-deep text-white' : 'border-line bg-surface sun:border-2'}`}
+              onClick={() => patch({ solar: !form.solar })}
+            >
+              {form.solar ? 'Le da el sol directo' : 'Va a la sombra'}
+            </button>
+            <Segmented
+              label="Qué lo protege"
+              value={form.protection}
+              onChange={(protection) => patch({ protection })}
+              options={[
+                { value: 'pia', label: 'Automático del cuadro' },
+                { value: 'gg', label: 'Fusible' },
+              ]}
+            />
+            <Segmented
+              label="Qué límite de caída usar"
+              value={form.lineId}
+              onChange={(lineId) => patch({ lineId, preset: 'libre' })}
+              options={VOLTAGE_DROP_LIMITS.map((item) => ({
+                value: item.id,
+                label: `${item.pct} %. ${item.label}`,
+              }))}
+            />
+            <Segmented
+              label="Qué tipo de aparato es"
+              value={form.load}
+              onChange={(load) => patch({ load })}
+              options={[
+                { value: 'resistiva', label: 'Resistencia o luces' },
+                { value: 'general', label: 'Uso general' },
+                { value: 'motor', label: 'Motor' },
+                { value: 'descarga', label: 'Lámparas de descarga' },
+                { value: 've', label: 'Cargador de coche' },
+              ]}
+            />
+          </div>
+        </details>
       </div>
       <Result form={form} result={result} />
     </div>
@@ -317,69 +355,78 @@ export function CablePage() {
 function Result({ form, result }: { form: CableForm; result: ReturnType<typeof designCable> }) {
   const rcd =
     form.lineId === 've' || form.load === 've'
-      ? 'Diferencial de 30 mA clase A como mínimo. En modo 3, añade RDC-DD de 6 mA o usa clase B.'
+      ? 'El cargador lleva su propio diferencial, el interruptor que corta si hay una fuga a tierra. Tiene que ser de 30 mA y de clase A. Si el cargador no vigila la corriente continua, hace falta uno de clase B.'
       : form.load === 'motor'
-        ? 'Variador monofásico: diferencial clase F. Trifásico: clase B si lo pide el fabricante.'
-        : 'En vivienda, diferencial de 30 mA clase A. Al menos uno por cada cinco circuitos.'
+        ? 'Un motor con variador ensucia la corriente. El diferencial de casa, el normal, a veces no lo ve o salta sin motivo. Pregunta al fabricante del equipo cuál pide.'
+        : 'Además del automático, el circuito de casa lleva un diferencial de 30 mA: corta si la corriente se escapa a tierra. Uno vale para cinco circuitos como máximo.'
+
+  const story =
+    result.ok && result.sectionFinal !== null && result.dropPercent !== null
+      ? `Usa cable de ${formatNumber(result.sectionFinal, 1)} mm² y un automático de ${result.breakerA ?? '—'} A. Por el camino se pierden ${formatNumber(result.dropPercent, 2)} % de la tensión, y el máximo aquí es ${formatNumber(result.limitPercent, 1)} %.`
+      : null
 
   return (
-    <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-      <section className="rounded-2xl border border-line bg-surface p-4 sun:border-2">
+    <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+      <section className="panel p-4">
         {!result.ok || result.sectionFinal === null || result.dropPercent === null ? (
-          <p className="text-muted">{result.error ?? 'Faltan datos.'}</p>
+          <p className="text-muted">{result.error ?? 'Faltan datos para calcular.'}</p>
         ) : (
           <>
             <StatusBadge status={result.status}>{statusText[result.status]}</StatusBadge>
-            <p className="mt-4 text-sm text-muted">Sección a instalar</p>
+            <p className="mt-4 text-base leading-relaxed">{story}</p>
+            <p className="mt-4 text-sm text-muted">Grosor del cable</p>
             <p className="text-5xl font-semibold tracking-tight text-copper">
               {formatNumber(result.sectionFinal, 1)} <span className="text-2xl">mm²</span>
             </p>
+            <p className="mt-2 text-sm text-muted">
+              El automático (PIA) es el interruptor pequeño de ese circuito. Corta si hay un
+              cortocircuito o si enchufas más de lo que el cable aguanta.
+            </p>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <Metric label="Ib" value={`${formatNumber(result.ib, 2)} A`} />
-              <Metric label="Para la caída" value={`${formatNumber(result.currentForDrop, 2)} A`} />
-              <Metric label="PIA" value={result.breakerA ? `${result.breakerA} A` : '—'} />
-              <Metric label="Fusible gG" value={result.fuseA ? `${result.fuseA} A` : '—'} />
+              <Metric label="Corriente que pide" value={`${formatNumber(result.ib, 2)} A`} />
               <Metric
-                label="Iz corregida"
+                label="Automático"
+                value={result.breakerA ? `${result.breakerA} A, curva ${result.curve}` : '—'}
+              />
+              <Metric
+                label="Lo que aguanta el cable"
                 value={result.iz ? `${formatNumber(result.iz, 1)} A` : '—'}
               />
-              <Metric label="Curva" value={result.curve} />
-              <Metric label="Caída" value={`${formatNumber(result.dropVolts ?? 0, 2)} V`} />
               <Metric
-                label="Caída"
-                value={`${formatNumber(result.dropPercent, 2)} % / ${formatNumber(result.limitPercent, 1)} %`}
+                label="Tensión que se pierde"
+                value={`${formatNumber(result.dropVolts ?? 0, 2)} V`}
               />
               <Metric
-                label="Por calentamiento"
+                label="Por calor, mínimo"
                 value={
                   result.sectionHeating ? `${formatNumber(result.sectionHeating, 1)} mm²` : '—'
                 }
               />
               <Metric
-                label="Por caída"
+                label="Por distancia, mínimo"
                 value={result.sectionDrop ? `${formatNumber(result.sectionDrop, 1)} mm²` : '—'}
               />
               <Metric
-                label="Tierra"
+                label="Cable de tierra"
                 value={result.peMm2 ? `${formatNumber(result.peMm2, 1)} mm²` : '—'}
               />
               <Metric
-                label="Longitud máxima"
+                label="Hasta dónde llega este cable"
                 value={result.maxLength ? `${formatNumber(result.maxLength, 1)} m` : '—'}
               />
-              <Metric
-                label="Pérdidas"
-                value={result.lossesW ? `${formatNumber(result.lossesW, 1)} W` : '—'}
-              />
-              <Metric label="γ" value={`${result.conductivity} m/(Ω·mm²)`} />
             </dl>
-            <ul className="mt-4 flex flex-col gap-1 text-sm">
-              {result.reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-            <p className="mt-3 text-sm text-muted">{rcd}</p>
-            <p className="mt-1 text-sm text-muted">{result.methodLabel}</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">{rcd}</p>
+            <p className="mt-2 text-sm text-muted">Instalación supuesta: {result.methodLabel}.</p>
+            <details className="mt-3 text-sm">
+              <summary className="min-h-12 cursor-pointer font-medium">
+                Por qué sale este aviso
+              </summary>
+              <ul className="mt-2 flex flex-col gap-1 text-muted">
+                {result.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </details>
           </>
         )}
       </section>

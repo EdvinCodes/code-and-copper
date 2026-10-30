@@ -17,14 +17,14 @@
 
 [data-theme="sun"] {
   color-scheme: light;
-  --bg: #ffffff;
-  --surface: #f4f4f5;
-  --surface-2: #ffffff;
-  --text: #09090b;
-  --muted: #3f3f46;
-  --line: #18181b;
-  --copper: #9a5416;
-  --copper-deep: #7c3f0d;
+  --bg: #f4efe6;
+  --surface: #fffdf8;
+  --surface-2: #fff4e6;
+  --text: #1c1917;
+  --muted: #44403c;
+  --line: #a8a29e;
+  --copper: #9a3412;
+  --copper-deep: #7c2d12;
   --shadow: 0 10px 24px rgb(0 0 0 / 0.08);
 }
 
@@ -49,10 +49,28 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgb(184 115 51 / 0.28), transparent 60%),
+    radial-gradient(700px 380px at 100% 0%, rgb(79 163 224 / 0.12), transparent 55%), var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
+}
+
+[data-theme="sun"] body {
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgb(184 115 51 / 0.2), transparent 60%), var(--bg);
+}
+
+.panel {
+  border: 1px solid color-mix(in srgb, var(--line) 80%, var(--copper));
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.panel-lesson {
+  border-left: 4px solid var(--copper-deep);
 }
 
 button,

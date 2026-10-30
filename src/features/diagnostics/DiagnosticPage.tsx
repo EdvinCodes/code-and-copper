@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { PageIntro } from '../../components/Guide.tsx'
 import { SafetyBanner } from '../../components/SafetyBanner.tsx'
 import { AC_START, AC_TREE } from '../../data/diagnostics/ac.ts'
 import { BREAKER, BREAKER_START } from '../../data/diagnostics/breaker.ts'
@@ -13,7 +14,12 @@ const CASES = [
     start: DIFFERENTIAL_START,
     nodes: DIFFERENTIAL,
   },
-  { id: 'magnetotermico', title: 'Salta el PIA o el IGA', start: BREAKER_START, nodes: BREAKER },
+  {
+    id: 'magnetotermico',
+    title: 'Salta un automático del cuadro',
+    start: BREAKER_START,
+    nodes: BREAKER,
+  },
   { id: 'aire', title: 'El aire no enfría', start: AC_START, nodes: AC_TREE },
 ] as const
 
@@ -30,14 +36,14 @@ export function DiagnosticPage() {
   const selected = CASES.find((item) => item.id === caso)
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Diagnóstico</h1>
-        <p className="mt-2 text-muted">
-          Un paso cada vez. Atrás no cambia la instalación: solo deshace la última respuesta.
+      <PageIntro kicker="Cuando algo ha saltado" title="Responde y te digo el siguiente paso">
+        <p>
+          No es una lista de causas. Es una pregunta cada vez. Atrás solo deshace tu respuesta, no
+          toca la instalación. Si vas a medir sin tensión, primero las cinco reglas.
         </p>
-      </header>
+      </PageIntro>
       <article className="rounded-2xl border border-amber-700 bg-amber-950/40 p-4 sun:border-2 sun:bg-amber-50">
-        <h2 className="font-semibold">Cinco reglas antes de medir sin tensión</h2>
+        <h2 className="font-semibold">Antes de abrir nada y medir sin tensión</h2>
         <ol className="mt-2 list-decimal pl-5 text-sm">
           {GOLDEN.map((rule) => (
             <li key={rule}>{rule}</li>

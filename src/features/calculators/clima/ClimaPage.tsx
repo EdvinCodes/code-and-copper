@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { ExplainAsDev } from '../../../components/ExplainAsDev.tsx'
+import { Note, PageIntro } from '../../../components/Guide.tsx'
 import { NumberField } from '../../../components/NumberField.tsx'
 import { SafetyBanner } from '../../../components/SafetyBanner.tsx'
 import { Segmented } from '../../../components/Segmented.tsx'
@@ -94,15 +95,14 @@ export function ClimaPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Clima y frigorista</h1>
-        <p className="mt-2 text-muted">
-          Estimaciones de campo. La carga no sustituye un cálculo de cargas del RITE.
+      <PageIntro kicker="Aire y agua" title="Si el equipo llega y si está rindiendo">
+        <p>
+          Primero, una estimación de cuántos vatios de frío pide una habitación. Después, con el
+          equipo en marcha, si el aire sale lo bastante más frío que el que entra. No sustituye el
+          cálculo completo de un proyecto.
         </p>
-        <div className="mt-3">
-          <ShareButton title="Clima · Code & Copper" />
-        </div>
-      </header>
+      </PageIntro>
+      <ShareButton title="Clima · Code & Copper" />
       <Tabs
         value={form.tab}
         onChange={(tab) => patch({ tab })}
@@ -114,6 +114,17 @@ export function ClimaPage() {
           { value: 'gases', label: 'Gases' },
         ]}
       />
+      <Note>
+        {form.tab === 'carga'
+          ? 'Metros de la habitación, cómo de bien aislada está y hacia dónde mira. El resultado es una potencia comercial de split, no una factura de ingeniería.'
+          : form.tab === 'salto'
+            ? 'Mide el aire que entra a la máquina y el que sale. En frío, la diferencia buena de un split anda entre 8 y 14 grados, con el equipo ya estable.'
+            : form.tab === 'ciclo'
+              ? 'El manómetro dice la presión. Con ella sabes a qué temperatura debería estar el gas. Si la tubería está más caliente o más fría, falta gas, sobra, o no circula.'
+              : form.tab === 'caudal'
+                ? 'En aerotermia el agua no salta 10 grados como el aire de un split. El diseño suele ser unos 5. Con esa diferencia y la potencia sale el caudal de la bomba.'
+                : 'Presión de cada gas, qué diámetro de tubo lleva y cuánto hay que apretar la tuerca. El número definitivo es el del manual de esa máquina.'}
+      </Note>
       {form.tab === 'carga' ? <LoadTool form={form} patch={patch} /> : null}
       {form.tab === 'salto' ? <DeltaTool form={form} patch={patch} /> : null}
       {form.tab === 'ciclo' ? <CycleTool form={form} patch={patch} /> : null}

@@ -18,6 +18,7 @@ import { PwaUpdateBanner } from './PwaUpdateBanner.tsx'
 type Item = {
   to: string
   label: string
+  hint: string
   icon: LucideIcon
   match: (path: string) => boolean
 }
@@ -26,23 +27,38 @@ const items: Item[] = [
   {
     to: '/',
     label: 'Calcular',
+    hint: 'Los números',
     icon: Calculator,
     match: (path) => path === '/' || path.startsWith('/calc'),
   },
   {
     to: '/chuletas',
     label: 'Chuletas',
+    hint: 'Tablas para mirar',
     icon: BookOpen,
     match: (path) => path.startsWith('/chuletas'),
   },
-  { to: '/cuadro', label: 'Cuadro', icon: LayoutGrid, match: (path) => path.startsWith('/cuadro') },
+  {
+    to: '/cuadro',
+    label: 'Cuadro',
+    hint: 'Qué hay dentro',
+    icon: LayoutGrid,
+    match: (path) => path.startsWith('/cuadro'),
+  },
   {
     to: '/diagnostico',
     label: 'Diagnóstico',
+    hint: 'Si algo falla',
     icon: Stethoscope,
     match: (path) => path.startsWith('/diagnostico'),
   },
-  { to: '/arsenal', label: 'Arsenal', icon: Wrench, match: (path) => path.startsWith('/arsenal') },
+  {
+    to: '/arsenal',
+    label: 'Arsenal',
+    hint: 'Qué comprar',
+    icon: Wrench,
+    match: (path) => path.startsWith('/arsenal'),
+  },
 ]
 
 function NavList({ compact }: { compact: boolean }) {
@@ -61,8 +77,15 @@ function NavList({ compact }: { compact: boolean }) {
                 compact ? 'flex-col py-1' : 'justify-start px-3 text-sm'
               } ${active ? 'bg-copper-deep text-white' : 'text-muted hover:bg-surface'}`}
             >
-              <Icon aria-hidden="true" className="size-5" />
-              <span className={compact ? 'max-w-full truncate' : ''}>{item.label}</span>
+              <Icon aria-hidden="true" className="size-5 shrink-0" />
+              <span className={compact ? 'max-w-full truncate' : 'flex flex-col'}>
+                <span>{item.label}</span>
+                {compact ? null : (
+                  <span className={`text-xs ${active ? 'text-white/80' : 'text-muted'}`}>
+                    {item.hint}
+                  </span>
+                )}
+              </span>
             </NavLink>
           </li>
         )
@@ -155,7 +178,7 @@ export function AppShell() {
         <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-56 shrink-0 border-r border-line md:block">
           <NavList compact={false} />
         </aside>
-        <main id="contenido" className="min-w-0 flex-1 px-4 py-5 pb-28 md:pb-10">
+        <main id="contenido" className="min-w-0 flex-1 overflow-x-clip px-4 py-5 pb-28 md:pb-10">
           <Outlet />
         </main>
       </div>

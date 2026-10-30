@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PageIntro } from '../../components/Guide.tsx'
 import { Tabs } from '../../components/Tabs.tsx'
 import { ARSENAL, ARSENAL_TABS, type Priority } from '../../data/arsenal.ts'
 import { useArsenal } from '../../stores/arsenal.ts'
@@ -20,12 +21,13 @@ export function ArsenalPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Arsenal</h1>
-        <p className="mt-2 text-muted">
-          {done} de {items.length} en esta pestaña. El progreso se queda en este dispositivo.
+      <PageIntro kicker="Qué hace falta tener" title="La lista del banco, el maletín y el frío">
+        <p>
+          Marca lo que ya tienes. {done} de {items.length} en esta pestaña. Se queda guardado en
+          este dispositivo. Empieza por el banco: es lo que puedes montar en casa antes de ir a una
+          obra.
         </p>
-      </header>
+      </PageIntro>
       <Tabs
         value={tab}
         onChange={setTab}
