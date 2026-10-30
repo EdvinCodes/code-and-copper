@@ -9,7 +9,7 @@ import {
   SunMedium,
   Wrench,
 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { APP_NAME, APP_TAGLINE } from '../data/meta.ts'
 import { applyTheme, useSettings } from '../stores/settings.ts'
@@ -100,34 +100,56 @@ export function AppShell() {
   const wakeLock = useSettings((state) => state.wakeLock)
   const setWakeLock = useSettings((state) => state.setWakeLock)
   const wakeSupported = typeof navigator !== 'undefined' && 'wakeLock' in navigator
+  const [wakeNote, setWakeNote] = useState('')
+  const screenLock = useRef<WakeLockSentinel | null>(null)
 
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
 
   useEffect(() => {
+    if (wakeLock || !screenLock.current) return
+    void screenLock.current.release()
+    screenLock.current = null
+  }, [wakeLock])
+
+  useEffect(() => {
     if (!wakeLock || !('wakeLock' in navigator)) return
-    let released = false
-    let sentinel: WakeLockSentinel | null = null
+    let cancelled = false
     async function acquire() {
-      if (released) return
+      if (cancelled || document.visibilityState !== 'visible') return
       try {
-        sentinel = await navigator.wakeLock.request('screen')
+        screenLock.current = await navigator.wakeLock.request('screen')
       } catch {
-        /* el sistema puede negar el bloqueo */
+        /* al volver a la pestaña el navegador puede pedir otro gesto */
       }
     }
-    void acquire()
     function onVisible() {
       if (document.visibilityState === 'visible') void acquire()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
-      released = true
+      cancelled = true
       document.removeEventListener('visibilitychange', onVisible)
-      void sentinel?.release()
     }
   }, [wakeLock])
+
+  async function toggleScreenLock() {
+    if (!('wakeLock' in navigator)) return
+    if (wakeLock) {
+      setWakeLock(false)
+      setWakeNote('')
+      return
+    }
+    try {
+      screenLock.current = await navigator.wakeLock.request('screen')
+      setWakeLock(true)
+      setWakeNote('La pantalla se queda encendida')
+    } catch {
+      setWakeLock(false)
+      setWakeNote('Este navegador no deja mantener la pantalla encendida')
+    }
+  }
 
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -146,19 +168,23 @@ export function AppShell() {
           {wakeSupported ? (
             <button
               type="button"
-              className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl"
+              className={`inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl ${wakeLock ? 'bg-copper-deep text-white' : 'hover:bg-surface'}`}
               aria-pressed={wakeLock}
+              title={
+                wakeNote ||
+                (wakeLock ? 'La pantalla se queda encendida' : 'Mantener la pantalla encendida')
+              }
               aria-label={
                 wakeLock ? 'Permitir que la pantalla se apague' : 'Mantener la pantalla encendida'
               }
-              onClick={() => setWakeLock(!wakeLock)}
+              onClick={() => void toggleScreenLock()}
             >
               <Eye aria-hidden="true" className="size-5" />
             </button>
           ) : null}
           <button
             type="button"
-            className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl"
+            className={`inline-flex min-h-12 min-w-12 items-center justify-center rounded-xl ${theme === 'sun' ? 'bg-copper-deep text-white' : 'hover:bg-surface'}`}
             aria-pressed={theme === 'sun'}
             aria-label={theme === 'sun' ? 'Activar modo oscuro' : 'Activar Modo Sol'}
             onClick={toggleTheme}

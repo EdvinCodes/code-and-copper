@@ -74,11 +74,25 @@ body {
 }
 
 button,
+summary,
+a[href],
+[role="tab"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 input,
 select,
 textarea {
   font: inherit;
   color: inherit;
+}
+
+button {
+  font: inherit;
 }
 
 :focus-visible {
